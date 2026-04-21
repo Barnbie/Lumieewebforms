@@ -6,7 +6,7 @@
   NODE_VERSION = "18"
 
 [functions]
-  node_bundler = "esbundle"
+  node_bundler = "esbuild"
   external_node_modules = ["groq-sdk", "@supabase/supabase-js", "axios", "uuid"]
 
 [[redirects]]
