@@ -1,0 +1,19 @@
+{
+  "name": "lumiee-web-studio",
+  "version": "1.0.0",
+  "description": "Lumiee Web Studio — Agentic Client Management System",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "twilio": "^4.20.0",
+    "axios": "^1.6.0",
+    "uuid": "^9.0.0",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}
