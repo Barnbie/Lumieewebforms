@@ -8,23 +8,3 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["groq-sdk", "@supabase/supabase-js", "axios", "uuid"]
-
-[[redirects]]
-  from = "/api/submit-form"
-  to = "/.netlify/functions/submit-form"
-  status = 200
-
-[[redirects]]
-  from = "/api/approve"
-  to = "/.netlify/functions/approve"
-  status = 200
-
-[[redirects]]
-  from = "/api/paystack-webhook"
-  to = "/.netlify/functions/paystack-webhook"
-  status = 200
-
-[[redirects]]
-  from = "/api/dashboard/*"
-  to = "/.netlify/functions/dashboard"
-  status = 200
