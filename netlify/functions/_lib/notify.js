@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { logNotification } from './supabase.js';
 
+// ── Send email via Brevo ────────────────────────────
 export async function sendEmail({ to_email, to_name, subject, html_content, text_content, enquiry_id, client_id, recipient = 'client' }) {
   try {
     await axios.post(
@@ -27,4 +28,18 @@ export async function sendEmail({ to_email, to_name, subject, html_content, text
     await logNotification({ type: 'email', recipient, to_email, subject, message: text_content || '', status: 'failed', error_message: err.message, enquiry_id, client_id });
     return { success: false, error: err.message };
   }
+}
+
+// ── Notify owner via email ──────────────────────────
+export async function notifyOwner({ subject, message, html, enquiry_id, client_id }) {
+  return sendEmail({
+    to_email: process.env.OWNER_EMAIL,
+    to_name: 'Lumiee Web Studio',
+    subject,
+    html_content: html || `<p style="font-family:sans-serif;font-size:16px;color:#1a1a2e;">${message}</p>`,
+    text_content: message,
+    enquiry_id,
+    client_id,
+    recipient: 'owner'
+  });
 }

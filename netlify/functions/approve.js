@@ -1,6 +1,5 @@
 import { supabase, logAgentAction } from './_lib/supabase.js';
-import { sendEmail } from './_lib/notify.js';
-import { notifyOwner } from './_lib/termii.js';
+import { sendEmail, notifyOwner } from './_lib/notify.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -115,7 +114,11 @@ export const handler = async (event) => {
         agent_reply: finalReply
       }).eq('id', enquiry.id);
 
-      await notifyOwner({ message: `Reply sent to ${enquiry.full_name} for ${serviceName}. Waiting for payment.`, enquiry_id: enquiry.id });
+      await notifyOwner({
+        subject: `Reply sent to ${enquiry.full_name} — ${serviceName}`,
+        message: `Your reply to ${enquiry.full_name} for ${serviceName} has been sent. Waiting for payment.`,
+        enquiry_id: enquiry.id
+      });
 
       await logAgentAction({ agent: 'intake', action: 'reply_sent_to_client', status: 'success', enquiry_id: enquiry.id, details: { action } });
 

@@ -2,7 +2,7 @@ import Groq from 'groq-sdk';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase, logAgentAction } from './_lib/supabase.js';
-import { notifyOwner } from './_lib/termii.js';
+import { notifyOwner } from './_lib/notify.js';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -78,14 +78,28 @@ export const handler = async (event) => {
       paystack_amount: paystackAmount ? paystackAmount * 100 : null
     }).eq('id', enquiry_id);
 
-    // notify owner via SMS
+    // notify owner via email
     const approvalUrl = `${process.env.BASE_URL}/admin.html?approve=${approvalToken}`;
-    const smsMessage =
-      `New ${enquiry.stage === 'enquiry' ? 'enquiry' : 'onboarding'} from ${enquiry.full_name}\n` +
-      `Service: ${SERVICE_NAMES[enquiry.service]}\n` +
-      `Draft reply ready. Review and approve:\n${approvalUrl}`;
+    const serviceName = SERVICE_NAMES[enquiry.service];
 
-    await notifyOwner({ message: smsMessage, enquiry_id });
+    await notifyOwner({
+      subject: `New ${enquiry.stage === 'enquiry' ? 'Enquiry' : 'Onboarding'} from ${enquiry.full_name} — ${serviceName}`,
+      message: `New ${enquiry.stage} from ${enquiry.full_name} for ${serviceName}. Review and approve: ${approvalUrl}`,
+      html: `<div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;background:#f4f4f8;">
+        <div style="background:#050507;border-radius:12px;padding:24px 28px;margin-bottom:20px;">
+          <span style="color:#fff;font-size:18px;font-weight:800;">Lumiee <span style="color:#DD4290;">Web Studio</span></span>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:28px;">
+          <h2 style="margin:0 0 16px;color:#050507;font-size:20px;">New ${enquiry.stage === 'enquiry' ? 'Enquiry' : 'Onboarding Submission'}</h2>
+          <p style="color:#444;font-size:16px;margin:0 0 8px;"><strong>Client:</strong> ${enquiry.full_name}</p>
+          <p style="color:#444;font-size:16px;margin:0 0 8px;"><strong>Service:</strong> ${serviceName}</p>
+          <p style="color:#444;font-size:16px;margin:0 0 24px;"><strong>WhatsApp:</strong> ${enquiry.whatsapp}</p>
+          <p style="color:#444;font-size:16px;margin:0 0 24px;">The agent has drafted a personalised reply. Tap below to review and approve before it sends to the client.</p>
+          <a href="${approvalUrl}" style="display:inline-block;background:#DD4290;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">Review and Approve</a>
+        </div>
+      </div>`,
+      enquiry_id
+    });
     await logAgentAction({ agent: 'intake', action: 'owner_notified', status: 'success', enquiry_id, details: { approval_token: approvalToken } });
 
     return { statusCode: 200, body: JSON.stringify({ success: true, approval_token: approvalToken }) };
