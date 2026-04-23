@@ -31,9 +31,11 @@ export async function sendEmail({ to_email, to_name, subject, html_content, text
 }
 
 // ── Notify owner via email ──────────────────────────
+// Sends FROM OWNER_EMAIL (mzbarnbie@gmail.com)
+// Sends TO NOTIFICATION_EMAIL (lumieewebstudio@gmail.com)
 export async function notifyOwner({ subject, message, html, enquiry_id, client_id }) {
   return sendEmail({
-    to_email: process.env.OWNER_EMAIL,
+    to_email: process.env.NOTIFICATION_EMAIL || process.env.OWNER_EMAIL,
     to_name: 'Lumiee Web Studio',
     subject,
     html_content: html || `<p style="font-family:sans-serif;font-size:16px;color:#1a1a2e;">${message}</p>`,
