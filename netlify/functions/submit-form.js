@@ -169,6 +169,18 @@ ${isEnquiry
     console.log('Email result:', emailResult);
     await logAgentAction({ agent: 'intake', action: 'completed', status: 'success', enquiry_id: enquiry.id });
 
+    // if paid stage trigger Agent 3
+    if (stage === 'paid') {
+      console.log('Paid stage — triggering Agent 3...');
+      try {
+        const { handler: onboardingHandler } = await import('./agent-onboarding.js');
+        await onboardingHandler({ httpMethod: 'POST', body: JSON.stringify({ enquiry_id: enquiry.id }), headers: {} });
+        console.log('Agent 3 done');
+      } catch (a3Err) {
+        console.error('Agent 3 failed:', a3Err.message);
+      }
+    }
+
     return {
       statusCode: 200,
       headers: CORS,
