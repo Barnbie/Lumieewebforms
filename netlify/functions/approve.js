@@ -18,14 +18,17 @@ const SERVICE_NAMES = {
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
-  // GET — fetch draft for approval page
+  // GET — fetch draft
   if (event.httpMethod === 'GET') {
     const token = event.queryStringParameters?.token;
     if (!token) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Missing token' }) };
 
     try {
       const { data: approval, error } = await supabase
-        .from('approval_queue').select('*, enquiries(*)').eq('approval_token', token).single();
+        .from('approval_queue')
+        .select('*, enquiries(*)')
+        .eq('approval_token', token)
+        .single();
 
       if (error || !approval) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Approval not found' }) };
 
@@ -65,7 +68,10 @@ export const handler = async (event) => {
       if (!token || !action) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Missing token or action' }) };
 
       const { data: approval, error } = await supabase
-        .from('approval_queue').select('*, enquiries(*)').eq('approval_token', token).single();
+        .from('approval_queue')
+        .select('*, enquiries(*)')
+        .eq('approval_token', token)
+        .single();
 
       if (error || !approval) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Approval not found' }) };
       if (approval.status !== 'pending') return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Already processed' }) };
@@ -80,11 +86,31 @@ export const handler = async (event) => {
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ success: true, message: 'Rejected' }) };
       }
 
-      // approval
       if (!enquiry.email) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Client has no email address' }) };
 
-      const serviceName = SERVICE_NAMES[enquiry.service];
-      const htmlContent = buildEmailHTML({ reply: finalReply, paystackLink: approval.paystack_link, serviceName, stage: enquiry.stage });
+      const serviceName = SERVICE_NAMES[enquiry.service] || enquiry.service;
+      const firstName = enquiry.full_name.split(' ')[0];
+      const formData = enquiry.form_data || {};
+
+      // get invoice from stored form data
+      const invoiceText = formData._invoice || null;
+      const basePrice = formData._base_price || null;
+      const chargeAmount = formData._charge_amount || null;
+      const depositPercent = formData._deposit_percent || 60;
+      const isCustomBudget = !basePrice;
+
+      const htmlContent = buildEmailHTML({
+        reply: finalReply,
+        paystackLink: approval.paystack_link,
+        invoiceText,
+        serviceName,
+        stage: enquiry.stage,
+        firstName,
+        basePrice,
+        chargeAmount,
+        depositPercent,
+        isCustomBudget
+      });
 
       const emailResult = await sendEmail({
         to_email: enquiry.email,
@@ -93,7 +119,7 @@ export const handler = async (event) => {
           ? `Your ${serviceName} enquiry — Lumiee Web Studio`
           : `Welcome to Lumiee Web Studio — Your project is starting`,
         html_content: htmlContent,
-        text_content: finalReply,
+        text_content: finalReply + (invoiceText ? '\n\n' + invoiceText : ''),
         enquiry_id: enquiry.id,
         recipient: 'client'
       });
@@ -133,17 +159,48 @@ export const handler = async (event) => {
   return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
 };
 
-function buildEmailHTML({ reply, paystackLink, serviceName, stage }) {
+function buildEmailHTML({ reply, paystackLink, invoiceText, serviceName, stage, firstName, basePrice, chargeAmount, depositPercent, isCustomBudget }) {
   const replyHtml = reply.split('\n').filter(l => l.trim())
     .map(l => `<p style="margin:0 0 16px 0;line-height:1.7;color:#1a1a2e;font-size:16px;">${l}</p>`).join('');
 
-  const paymentSection = stage === 'enquiry' && paystackLink ? `
-    <div style="margin:32px 0;padding:28px;background:#fdf0f6;border-radius:12px;text-align:center;border:1px solid #f0c0d8;">
-      <p style="margin:0 0 16px 0;font-weight:600;color:#050507;font-size:16px;">Ready to get started?</p>
-      <a href="${paystackLink}" style="display:inline-block;background:#DD4290;color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:16px;">
-        Make Payment
-      </a>
-      <p style="margin:12px 0 0 0;font-size:13px;color:#999;">Secure payment powered by Paystack</p>
+  const balance = basePrice && chargeAmount ? basePrice - chargeAmount : 0;
+
+  const invoiceSection = !isCustomBudget && basePrice && chargeAmount ? `
+    <div style="margin:32px 0;background:#f8f8fc;border-radius:12px;overflow:hidden;border:1px solid #e8e8f0;">
+      <div style="background:#050507;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="color:#fff;font-size:15px;font-weight:700;">Invoice — ${serviceName}</span>
+        <span style="color:rgba(255,255,255,0.5);font-size:12px;">Lumiee Web Studio</span>
+      </div>
+      <div style="padding:24px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#666;font-size:14px;">Service</td>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#1a1a2e;font-size:14px;font-weight:600;text-align:right;">${serviceName}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#666;font-size:14px;">Total project value</td>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#1a1a2e;font-size:14px;font-weight:600;text-align:right;">NGN ${basePrice.toLocaleString()}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#666;font-size:14px;">Payment structure</td>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#1a1a2e;font-size:14px;text-align:right;">${depositPercent === 100 ? 'Full payment upfront' : '60% now, 40% on delivery'}</td>
+          </tr>
+          ${depositPercent !== 100 ? `
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#666;font-size:14px;">Balance on delivery</td>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e8f0;color:#1a1a2e;font-size:14px;text-align:right;">NGN ${balance.toLocaleString()}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:14px 0 0;color:#050507;font-size:16px;font-weight:700;">Amount due now</td>
+            <td style="padding:14px 0 0;color:#DD4290;font-size:18px;font-weight:800;text-align:right;">NGN ${chargeAmount.toLocaleString()}</td>
+          </tr>
+        </table>
+        ${paystackLink ? `
+        <div style="margin-top:24px;text-align:center;">
+          <a href="${paystackLink}" style="display:inline-block;background:#DD4290;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-weight:700;font-size:16px;">Pay Now — NGN ${chargeAmount.toLocaleString()}</a>
+          <p style="margin:10px 0 0;font-size:12px;color:#999;">Secure payment powered by Paystack</p>
+        </div>` : ''}
+      </div>
     </div>` : '';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
@@ -154,10 +211,10 @@ function buildEmailHTML({ reply, paystackLink, serviceName, stage }) {
     </div>
     <div style="padding:36px 32px;">
       ${replyHtml}
-      ${paymentSection}
+      ${invoiceSection}
     </div>
     <div style="padding:20px 32px;background:#f9f9f9;border-top:1px solid #eee;text-align:center;">
-      <p style="margin:0;font-size:13px;color:#999;">Lumiee Web Studio &nbsp;|&nbsp; lumieewebstudio@gmail.com</p>
+      <p style="margin:0;font-size:13px;color:#999;">Lumiee Web Studio &nbsp;|&nbsp; lumieewebstudio@gmail.com &nbsp;|&nbsp; wa.me/2348143329373</p>
     </div>
   </div>
 </body></html>`;

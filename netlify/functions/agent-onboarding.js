@@ -1,5 +1,5 @@
 import { supabase, logAgentAction } from './_lib/supabase.js';
-import { notifyOwner } from './_lib/notify.js';
+import { notifyOwner, sendEmail } from './_lib/notify.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -146,6 +146,59 @@ Write in clear prose, no bullet points, use short paragraphs with clear headings
       enquiry_id,
       client_id: client.id
     });
+
+    // ── Step 7: Send welcome email to client ─────────
+    const clientEmail = client.email;
+    if (clientEmail) {
+      const firstName = client.full_name.split(' ')[0];
+      await sendEmail({
+        to_email: clientEmail,
+        to_name: client.full_name,
+        subject: `Welcome to Lumiee Web Studio — Here is what you need to send us`,
+        html_content: `
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+            <div style="background:#050507;padding:28px 32px;">
+              <span style="color:#fff;font-size:20px;font-weight:800;">Lumiee <span style="color:#DD4290;">Web Studio</span></span>
+            </div>
+            <div style="padding:36px 32px;">
+              <h2 style="margin:0 0 16px;color:#050507;font-size:22px;">You are all set, ${firstName}!</h2>
+              <p style="color:#444;font-size:16px;line-height:1.75;margin:0 0 16px;">Thank you for completing your onboarding form. Your project is now active and we are ready to get started.</p>
+              <p style="color:#444;font-size:16px;line-height:1.75;margin:0 0 24px;">All further communication will be through <strong>WhatsApp</strong>. Please reach out to us at <strong>+2348143329373</strong> and we will continue the conversation there.</p>
+
+              <div style="background:#f8f8fc;border-radius:12px;padding:24px;margin-bottom:24px;">
+                <p style="color:#050507;font-size:16px;font-weight:700;margin:0 0 16px;">To get started, please send the following via WhatsApp:</p>
+
+                <p style="color:#444;font-size:15px;font-weight:600;margin:0 0 8px;">For your website:</p>
+                <p style="color:#666;font-size:14px;line-height:1.75;margin:0 0 16px;">Your website content (text for each page), images you want used, your logo file (PNG or SVG preferred), and your brand colors and fonts if you have them.</p>
+
+                <p style="color:#444;font-size:15px;font-weight:600;margin:0 0 8px;">For your Paystack account setup:</p>
+                <p style="color:#666;font-size:14px;line-height:1.75;margin:0 0 16px;">If you need a Paystack payment gateway on your site, you will need to provide the following documents. These are required by Paystack for account verification:</p>
+
+                <div style="background:#fff;border-radius:8px;padding:16px;border:1px solid #e8e8f0;">
+                  <p style="color:#444;font-size:14px;margin:0 0 8px;"><strong>Business registration certificate</strong> (CAC documents if registered)</p>
+                  <p style="color:#444;font-size:14px;margin:0 0 8px;"><strong>Tax identification number</strong> (TIN certificate)</p>
+                  <p style="color:#444;font-size:14px;margin:0 0 8px;"><strong>Address verification</strong> — a recent utility bill or bank statement showing your address</p>
+                  <p style="color:#444;font-size:14px;margin:0 0 8px;"><strong>Your business email address</strong></p>
+                  <p style="color:#444;font-size:14px;margin:0;"><strong>Your business phone number</strong></p>
+                </div>
+                <p style="color:#999;font-size:12px;margin:10px 0 0;line-height:1.6;">Note: If your business is not registered, Paystack also accepts personal verification documents. We will guide you through this on WhatsApp.</p>
+              </div>
+
+              <p style="color:#444;font-size:16px;line-height:1.75;margin:0 0 24px;">Once we receive everything, we will get to work immediately. We are excited to build something great with you.</p>
+
+              <a href="https://wa.me/2348143329373" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">Chat with us on WhatsApp</a>
+            </div>
+            <div style="padding:20px 32px;background:#f9f9f9;border-top:1px solid #eee;text-align:center;">
+              <p style="margin:0;font-size:13px;color:#999;">Lumiee Web Studio &nbsp;|&nbsp; lumieewebstudio@gmail.com &nbsp;|&nbsp; wa.me/2348143329373</p>
+            </div>
+          </div>`,
+        text_content: `Hi ${firstName}, your onboarding is complete. All further communication will be via WhatsApp at +2348143329373. Please send your website content, images, logo, and Paystack documents (business registration, TIN, utility bill, email and phone number) via WhatsApp to get started.`,
+        enquiry_id,
+        client_id: client.id,
+        recipient: 'client'
+      });
+      console.log('Welcome email sent to client');
+    }
 
     await logAgentAction({ agent: 'onboarding', action: 'completed', status: 'success', enquiry_id, client_id: client.id, details: { brief_length: projectBrief.length } });
 

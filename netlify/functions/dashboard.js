@@ -65,6 +65,30 @@ export const handler = async (event) => {
       const body = JSON.parse(event.body);
       const { type } = body;
 
+      // create client manually
+      if (type === 'create_client') {
+        const { full_name, email, whatsapp, business_name, service, notes } = body;
+        if (!full_name || !whatsapp) {
+          return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Full name and WhatsApp required' }) };
+        }
+        const { data: client, error: cErr } = await supabase
+          .from('clients')
+          .insert({ full_name, email: email || null, whatsapp, business_name: business_name || null, notes: notes || null, onboarding_complete: true })
+          .select().single();
+        if (cErr) throw cErr;
+
+        const SERVICE_NAMES = { website:'Website Development', mobile:'Mobile App Development', design:'Product Design', seo:'SEO Optimization' };
+        const serviceName = SERVICE_NAMES[service] || service || 'Project';
+        await supabase.from('projects').insert({
+          client_id: client.id,
+          title: serviceName + ' for ' + full_name,
+          service: service || 'website',
+          stage: 'onboarding',
+          notes: notes || null
+        });
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ success: true, data: client }) };
+      }
+
       if (type === 'create_project') {
         const { title, client_name, service, stage, notes } = body;
         if (!title || !client_name) {
