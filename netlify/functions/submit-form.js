@@ -24,6 +24,9 @@ const BASE_PRICES = {
   seo:     { '80,000': 80000, '150,000': 150000 }
 };
 
+// Services where ALL packages are custom priced (no Paystack link auto-generated)
+const ALL_CUSTOM_SERVICES = [];
+
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: JSON.stringify({ error: 'Method not allowed' }) };
@@ -97,10 +100,10 @@ export const handler = async (event) => {
 Write a warm, professional and personalised email reply to a client.
 Style: warm but professional, confident, clear, address client by first name (${firstName}), no hyphens connecting words, short paragraphs, no bullet points in the body.
 ${isEnquiry
-  ? isCustomBudget
-    ? `This client has selected a Custom package. Do NOT mention any invoice or payment link. Let them know that Lumiee Web Studio will reach out to them on WhatsApp at +2348143329373 to discuss their specific requirements and prepare a custom quote. They can also reach out directly. Once payment is agreed and made, they will receive an onboarding form via email. All further communication will be through WhatsApp.`
-    : `This client is making an enquiry and has not paid yet. Address their specific needs, build confidence in Lumiee Web Studio, and guide them toward payment. ${paymentNote} Let them know a detailed invoice is attached to this email with their payment link. After payment, they will receive an onboarding form via email and all further communication will be via WhatsApp at +2348143329373.`
-  : `This client has already paid. Welcome them warmly and confirm their project is now active. Let them know they will receive an onboarding form via email shortly to provide all their project details. All further communication will be through WhatsApp at +2348143329373.`}`
+  ? (isCustomBudget || !basePrice)
+    ? `This client has selected a custom or unpriced package. Do NOT mention any invoice, payment link, or specific amount. Write a warm personalised response addressing their specific project needs. Let them know Lumiee Web Studio will reach out to them on WhatsApp at +2348143329373 to discuss their requirements in detail and prepare a custom quote. They can also reach out directly on WhatsApp. Do not mention onboarding forms at this stage.`
+    : `This client is making an enquiry with a known package price. Address their specific needs and build confidence in Lumiee Web Studio. ${paymentNote} Let them know a detailed invoice with their payment link is attached to this email. After payment they will receive an onboarding form via email, and all further communication will be via WhatsApp at +2348143329373.`
+  : `This client has already paid. Welcome them warmly and confirm their project is now active. Let them know that the Lumiee Web Studio team will reach out to them very soon on WhatsApp at +2348143329373 to kick things off. Do NOT mention sending any onboarding form as that is handled separately.`}`
           },
           {
             role: 'user',
