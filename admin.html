@@ -512,7 +512,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 </div>
 
 <script>
-const ADMIN_PASSWORD = 'lumiee2024';
 const API = '/.netlify/functions';
 const SERVICE_NAMES = {website:'Website Development',mobile:'Mobile App Development',design:'Product Design',seo:'SEO Optimization'};
 const STAGE_LABELS = {new:'New',processing:'Processing',awaiting_approval:'Awaiting Approval',reply_sent:'Reply Sent',paid:'Paid',onboarded:'Onboarded',error:'Error',rejected:'Rejected'};
@@ -521,15 +520,36 @@ const PROJECT_STAGE_LABEL = {onboarding:'Onboarding',in_progress:'In Progress',r
 let data = {enquiries:[],approvals:[],clients:[],projects:[]};
 
 // ── AUTH ──────────────────────────────────────────────
-function doLogin() {
-  if (document.getElementById('loginPass').value === ADMIN_PASSWORD) {
-    sessionStorage.setItem('lws_auth','1');
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('app').classList.add('visible');
-    const p = sessionStorage.getItem('lws_page')||'dashboard';
-    loadAll().then(()=>{ showPage(p,document.getElementById('nav-'+p)); checkApprovalToken(); });
-  } else {
-    document.getElementById('loginErr').style.display='block';
+async function doLogin() {
+  const password = document.getElementById('loginPass').value;
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/.netlify/functions/admin-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      sessionStorage.setItem('lws_auth', '1');
+      sessionStorage.setItem('lws_token', result.token);
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      const p = sessionStorage.getItem('lws_page') || 'dashboard';
+      loadAll().then(() => { showPage(p, document.getElementById('nav-' + p)); checkApprovalToken(); });
+    } else {
+      document.getElementById('loginErr').style.display = 'block';
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    document.getElementById('loginErr').style.display = 'block';
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
   }
 }
 function doLogout(){ sessionStorage.removeItem('lws_auth'); sessionStorage.removeItem('lws_page'); location.reload(); }
